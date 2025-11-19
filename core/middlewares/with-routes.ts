@@ -69,7 +69,12 @@ const getRawWebPageContent = async (id: string) => {
 
 export const withRoutes: MiddlewareFactory = () => {
   return async (request: NextRequest) => {
-    const route = await getRoute('/the-planter-by-rustic-roots', '1804873');
+    const pathname = request.nextUrl.pathname;
+    const channelId = request.headers.get('x-bc-channel-id') ?? '';
+
+    console.log('Resolving route for path:', pathname);
+
+    const route = await getRoute(pathname, channelId);
 
     const node = route?.node;
 
