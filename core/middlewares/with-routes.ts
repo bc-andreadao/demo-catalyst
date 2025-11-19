@@ -67,10 +67,24 @@ const getRawWebPageContent = async (id: string) => {
   return node;
 };
 
+const clearLocaleFromPath = (path: string, locale: string) => {
+  if (path === `/${locale}` || path === `/${locale}/`) {
+    return '/';
+  }
+
+  if (path.startsWith(`/${locale}/`)) {
+    return path.replace(`/${locale}`, '');
+  }
+
+  return path;
+};
+
 export const withRoutes: MiddlewareFactory = () => {
   return async (request: NextRequest) => {
-    const pathname = request.nextUrl.pathname;
     const channelId = request.headers.get('x-bc-channel-id') ?? '';
+    const locale = request.headers.get('x-bc-locale') ?? '';
+
+    const pathname = clearLocaleFromPath(request.nextUrl.pathname + request.nextUrl.search, locale);
 
     console.log('Resolving route for path:', pathname);
 
@@ -82,27 +96,27 @@ export const withRoutes: MiddlewareFactory = () => {
 
     switch (node?.__typename) {
       case 'Brand': {
-        url = `/en/brand/${node.entityId}`;
+        url = `/${locale}/brand/${node.entityId}`;
         break;
       }
 
       case 'Category': {
-        url = `/en/category/${node.entityId}`;
+        url = `/${locale}/category/${node.entityId}`;
         break;
       }
 
       case 'Product': {
-        url = `/en/product/${node.entityId}`;
+        url = `/${locale}/product/${node.entityId}`;
         break;
       }
 
       case 'NormalPage': {
-        url = `/en/webpages/${node.id}/normal/`;
+        url = `/${locale}/webpages/${node.id}/normal/`;
         break;
       }
 
       case 'ContactPage': {
-        url = `/en/webpages/${node.id}/contact/`;
+        url = `/${locale}/webpages/${node.id}/contact/`;
         break;
       }
 
@@ -115,24 +129,27 @@ export const withRoutes: MiddlewareFactory = () => {
       }
 
       case 'Blog': {
-        url = `/en/blog`;
+        url = `/${locale}/blog`;
         break;
       }
 
       case 'BlogPost': {
-        url = `/en/blog/${node.entityId}`;
+        url = `/${locale}/blog/${node.entityId}`;
         break;
       }
 
       default: {
         const { pathname } = new URL(request.url);
-        url = `/en${pathname}`;
+
+        const cleanPathName = clearLocaleFromPath(pathname, locale);
+
+        url = `/${locale}${cleanPathName}`;
       }
     }
 
     const rewriteUrl = new URL(url, request.url);
     rewriteUrl.search = request.nextUrl.search;
-    
+
     console.log('NODE:', node);
     console.log('ORIGINAL:', request.url);
     console.log('TARGET:', url);
