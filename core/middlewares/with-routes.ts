@@ -131,7 +131,8 @@ export const withRoutes: MiddlewareFactory = () => {
     }
 
     const rewriteUrl = new URL(url, request.url);
-
+    rewriteUrl.search = request.nextUrl.search;
+    
     console.log('NODE:', node);
     console.log('ORIGINAL:', request.url);
     console.log('TARGET:', url);
