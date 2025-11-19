@@ -86,6 +86,7 @@ export const withRoutes: MiddlewareFactory = () => {
 
     const pathname = clearLocaleFromPath(request.nextUrl.pathname + request.nextUrl.search, locale);
 
+    console.log('Locale:', locale);
     console.log('Resolving route for path:', pathname);
 
     const route = await getRoute(pathname, channelId);
