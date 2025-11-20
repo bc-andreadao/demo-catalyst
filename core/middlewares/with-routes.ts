@@ -144,6 +144,9 @@ export const withRoutes: MiddlewareFactory = () => {
     };
 
     if (route?.redirect) {
+
+      console.log(`REDIRECT DATA:`, route?.redirect);
+      
       // Only carry over query params if the fromPath does not have any, as Bigcommerce 301 redirects support matching by specific query params.
       const fromPathSearchParams = new URL(route.redirect.fromPath, request.url).search;
       const searchParams = fromPathSearchParams.length > 0 ? '' : request.nextUrl.search;
@@ -156,6 +159,8 @@ export const withRoutes: MiddlewareFactory = () => {
         case 'ProductRedirect': {
           // For dynamic redirects, assume an internal redirect and construct the URL from the path
           const redirectUrl = new URL(route.redirect.to.path + searchParams, request.url);
+
+          console.log('REDIRECT:', redirectUrl.toString());
 
           if (sameInternalUrl(request.nextUrl, redirectUrl)) {
             break;
