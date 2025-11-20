@@ -144,6 +144,8 @@ const sameInternalUrl = (a: URL, b: URL) =>
 const getRouteInfo = async (request: NextRequest) => {
   const channelId = request.headers.get('x-bc-channel-id') ?? '';
   const locale = request.headers.get('x-bc-locale') ?? '';
+  
+  // For route resolution parity, we need to also include query params, otherwise certain redirects will not work.
   const pathname = clearLocaleFromPath(request.nextUrl.pathname + request.nextUrl.search, locale);
 
   console.log('Locale:', locale);
