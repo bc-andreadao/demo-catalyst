@@ -94,6 +94,26 @@ const getRawWebPageContent = async (id: string) => {
   return node;
 };
 
+const GetStoreStatusQuery = graphql(`
+  query getStoreStatus {
+    site {
+      settings {
+        status
+      }
+    }
+  }
+`);
+
+const getStoreStatus = async (channelId?: string) => {
+  const { data } = await client.fetch({
+    document: GetStoreStatusQuery,
+    fetchOptions: { next: { revalidate: 300 } },
+    channelId,
+  });
+
+  return data.site.settings?.status;
+};
+
 const clearLocaleFromPath = (path: string, locale: string) => {
   if (path === `/${locale}` || path === `/${locale}/`) {
     return '/';
@@ -121,17 +141,34 @@ function normalizeForCompare(url: URL): string {
 const sameInternalUrl = (a: URL, b: URL) =>
   a.origin === b.origin && normalizeForCompare(a) === normalizeForCompare(b);
 
+const getRouteInfo = async (request: NextRequest) => {
+  const channelId = request.headers.get('x-bc-channel-id') ?? '';
+  const locale = request.headers.get('x-bc-locale') ?? '';
+  const pathname = clearLocaleFromPath(request.nextUrl.pathname + request.nextUrl.search, locale);
+
+  console.log('Locale:', locale);
+  console.log('Resolving route for path:', pathname);
+
+  return {
+    route: await getRoute(pathname, channelId),
+    status: await getStoreStatus(channelId),
+  };
+};
+
 export const withRoutes: MiddlewareFactory = () => {
   return async (request: NextRequest) => {
-    const channelId = request.headers.get('x-bc-channel-id') ?? '';
     const locale = request.headers.get('x-bc-locale') ?? '';
 
-    const pathname = clearLocaleFromPath(request.nextUrl.pathname + request.nextUrl.search, locale);
+    const { route, status } = await getRouteInfo(request);
 
-    console.log('Locale:', locale);
-    console.log('Resolving route for path:', pathname);
+    if (status === undefined) {
+      throw new Error('Failed to fetch new storefront status');
+    }
 
-    const route = await getRoute(pathname, channelId);
+    if (status === 'MAINTENANCE') {
+      // 503 status code not working - https://github.com/vercel/next.js/issues/50155
+      return NextResponse.rewrite(new URL(`/${locale}/maintenance`, request.url), { status: 503 });
+    }
 
     const redirectConfig = {
       // Use 301 status code as it is more universally supported by crawlers
@@ -144,9 +181,9 @@ export const withRoutes: MiddlewareFactory = () => {
     };
 
     if (route?.redirect) {
-
-      console.log(`REDIRECT DATA:`, route?.redirect);
       
+      console.log(`REDIRECT DATA:`, route?.redirect);
+
       // Only carry over query params if the fromPath does not have any, as Bigcommerce 301 redirects support matching by specific query params.
       const fromPathSearchParams = new URL(route.redirect.fromPath, request.url).search;
       const searchParams = fromPathSearchParams.length > 0 ? '' : request.nextUrl.search;
